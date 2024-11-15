@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/pion/webrtc/v3"
 	"github.com/redis/go-redis/v9"
 	"github.com/streadway/amqp"
 )
@@ -45,7 +46,7 @@ func main () {
 	r := gin.Default()
 
 	r.POST("/start-session", startSession)
-	r.POST("/signal", handleSignal)
+	r.POST("/offer", handleOffer)
 	r.GET("/session/:id", getSession)
 }
 
@@ -59,31 +60,73 @@ func startSession(c *gin.Context) {
 }
 
 
-func handleSignal(c *gin.Context){
-	var msg struct {
-		SessionID string `json:"session_id"`
-		Message string `json:"message"`
+// func handleSignal(c *gin.Context){
+// 	var msg struct {
+// 		SessionID string `json:"session_id"`
+// 		Message string `json:"message"`
+// 	}
+// 	if err := c.ShouldBindJSON(&msg); err != nil {
+// 		c.JSON(http.StatusBadRequest, gin.H{"error" : "Invalid request"})
+// 		return
+// 	}
+
+// 	err := rabbitCh.Publish(
+// 		"",
+// 		msg.SessionID, 
+// 		false,
+// 		false,
+// 		amqp.Publishing{
+// 			ContentType: "text/plain",
+// 			Body: []byte(msg.Message),
+// 		},
+// 	)
+
+// 	if err != nil {
+// 		c.JSON(http.StatusInternalServerError, gin.H{"error" : "Failed to send message"})
+// 		return
+// 	}
+// }
+
+// Now changing it to handle SDP offers to answer the SDP asnwers
+func handleOffer(c *gin.Context) {
+	var request struct {
+		Offer string `json:"offer"`
 	}
-	if err := c.ShouldBindJSON(&msg); err != nil {
+
+	if err := c.ShouldBindJSON(&request); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error" : "Invalid request"})
-		return
+		return 
 	}
 
-	err := rabbitCh.Publish(
-		"",
-		msg.SessionID, 
-		false,
-		false,
-		amqp.Publishing{
-			ContentType: "text/plain",
-			Body: []byte(msg.Message),
-		},
-	)
-
+	peerConnection, err := webrtc.NewPeerConnection(webrtc.Configuration{})
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error" : "Failed to send message"})
+		c.JSON(http.StatusInternalServerError, gin.H{"error" : "Failed to create peer connection"})
 		return
 	}
+
+	peerConnection.OnICECandidate(func(candidate *webrtc.ICECandidate) {
+		if candidate != nil {
+			log.Printf("New ICE candidate : %s\n", candidate.ToJSON().Candidate)
+		}
+	})
+
+	// setting the remote sdp (offer) from the frontend
+	offer := webrtc.SessionDescription{
+		Type: webrtc.SDPTypeOffer,
+		SDP : request.Offer,
+	}
+
+	if err := peerConnection.SetRemoteDescription(offer); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error" : "Failed to set remote description"})
+		return
+	}
+
+	// creating a sdp answer
+	answer, err := peerConnection.CreateAnswer(nil)
+	if err != nil {
+		// TODO : Logic
+	}
+
 }
 
 func getSession(c *gin.Context){
