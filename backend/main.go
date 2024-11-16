@@ -21,7 +21,6 @@ var (
 )
 
 func init() {
-	// Initialize Redis
 	redisClient = redis.NewClient(&redis.Options{
 		Addr: "redis:6379",
 	})
@@ -41,18 +40,58 @@ func init() {
 	}
 }
 
+type Room struct {
+	ID        string    `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	Peers     []string  `json:"peers"`
+}
+
 func main() {
 	r := gin.Default()
 
-	// API Endpoints
 	r.POST("/start-session", startSession)
 	r.POST("/offer", handleOffer)
 	r.GET("/session/:id", getSession)
 
-	// Start the server
 	log.Println("Server running on port 8080...")
 	if err := r.Run(":8080"); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
+	}
+}
+
+func createRoom(c *gin.Context) {
+	roomID := "room_" + generateID()
+	room := Room{
+		ID:        roomID,
+		CreatedAt: time.Now(),
+		Peers:     make([]string, 0),
+	}
+
+	if err := redisClient.HSet(ctx, roomID,
+		"created_at", room.CreatedAt.Unix(),
+		"peers", "[]",
+	).Err(); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create room"})
+		return
+	}
+
+	redisClient.Expire(ctx, roomID, 24*time.Hour)
+	c.JSON(http.StatusOK, gin.H{"room_id" : roomID})
+}
+
+func getRoomInfo(c *gin.Context){
+	roomID := c.Param("id")
+
+	// checking if room exists
+	exists, err := redisClient.Exists(ctx, roomID).Result()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error" : "Failed to check room"})
+		return 
+	}
+
+	roomData, err := redisClient.HGetAll(ctx, roomID).Result()
+	if err != nil {
+		// todo : logic
 	}
 }
 
@@ -76,14 +115,12 @@ func handleOffer(c *gin.Context) {
 		return
 	}
 
-	// Ensure session exists in Redis
 	sessionExists, err := redisClient.Exists(ctx, request.SessionID).Result()
 	if err != nil || sessionExists == 0 {
 		c.JSON(http.StatusNotFound, gin.H{"error": "Session not found"})
 		return
 	}
 
-	// Create a WebRTC PeerConnection
 	peerConnection, err := webrtc.NewPeerConnection(webrtc.Configuration{})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create peer connection"})
@@ -96,8 +133,6 @@ func handleOffer(c *gin.Context) {
 			log.Printf("New ICE candidate: %s\n", candidate.ToJSON().Candidate)
 		}
 	})
-
-	// Set the remote description (SDP offer)
 	offer := webrtc.SessionDescription{
 		Type: webrtc.SDPTypeOffer,
 		SDP:  request.Offer,
@@ -107,7 +142,6 @@ func handleOffer(c *gin.Context) {
 		return
 	}
 
-	// Create and set a local SDP answer
 	answer, err := peerConnection.CreateAnswer(nil)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create answer"})
@@ -118,7 +152,6 @@ func handleOffer(c *gin.Context) {
 		return
 	}
 
-	// Publish the SDP answer to RabbitMQ for signaling
 	err = rabbitCh.Publish(
 		"", // Default exchange
 		request.SessionID,
