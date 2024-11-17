@@ -53,6 +53,9 @@ func main() {
 	r.POST("/offer", handleOffer)
 	r.GET("/session/:id", getSession)
 
+	r.POST("/create-room", createRoom)
+	r.GET("/room/:id", getRoomInfo)
+
 	log.Println("Server running on port 8080...")
 	if err := r.Run(":8080"); err != nil {
 		log.Fatalf("Failed to start server: %v", err)
@@ -76,23 +79,36 @@ func createRoom(c *gin.Context) {
 	}
 
 	redisClient.Expire(ctx, roomID, 24*time.Hour)
-	c.JSON(http.StatusOK, gin.H{"room_id" : roomID})
+	c.JSON(http.StatusOK, gin.H{"room_id": roomID})
 }
 
-func getRoomInfo(c *gin.Context){
+func getRoomInfo(c *gin.Context) {
 	roomID := c.Param("id")
 
 	// checking if room exists
 	exists, err := redisClient.Exists(ctx, roomID).Result()
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error" : "Failed to check room"})
-		return 
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to check room"})
+		return
+	}
+
+	if exists == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Room not found"})
+		return
 	}
 
 	roomData, err := redisClient.HGetAll(ctx, roomID).Result()
 	if err != nil {
 		// todo : logic
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to get room details"})
+		return
 	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"room_id": roomID,
+		"data":    roomData,
+	})
+
 }
 
 func startSession(c *gin.Context) {
@@ -187,3 +203,5 @@ func getSession(c *gin.Context) {
 func generateID() string {
 	return fmt.Sprintf("%d", time.Now().UnixNano())
 }
+
+// todo : handleroom logic after the meet
