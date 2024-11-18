@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-time Chat</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-4xl">
+        <div id="loginModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+            <div class="bg-white p-8 rounded-lg shadow-lg w-96">
+                <h2 class="text-2xl font-bold mb-4">Join Chat</h2>
+                <input type="text" id="username" placeholder="Username" 
+                       class="w-full p-2 mb-4 border rounded focus:outline-none focus:border-blue-500">
+                <input type="text" id="room" placeholder="Room Name" 
+                       class="w-full p-2 mb-4 border rounded focus:outline-none focus:border-blue-500">
+                <button id="joinButton"
+                        class="w-full bg-blue-500 text-white p-2 rounded hover:bg-blue-600 transition">
+                    Join
+                </button>
+            </div>
+        </div>
+
+        <!-- Chat Interface -->
+        <div id="chatInterface" class="hidden">
+            <div class="bg-white rounded-t-lg shadow p-4 mb-1">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h2 class="text-xl font-bold" id="roomDisplay"></h2>
+                        <p class="text-sm text-gray-500" id="userDisplay"></p>
+                    </div>
+                    <button id="leaveButton"
+                            class="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 transition">
+                        Leave
+                    </button>
+                </div>
+            </div>
+
+            <div class="bg-white h-[500px] overflow-y-auto p-4 border-b">
+                <div id="messagesContainer" class="space-y-4">
+                </div>
+            </div>
+            <div class="bg-white rounded-b-lg shadow p-4">
+                <div class="flex gap-2">
+                    <input type="text" id="messageInput" placeholder="Type a message..." 
+                           class="flex-1 p-2 border rounded focus:outline-none focus:border-blue-500">
+                    <button id="sendButton"
+                            class="bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600 transition">
+                        Send
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="chat.js"></script>
+</body>
+</html>
