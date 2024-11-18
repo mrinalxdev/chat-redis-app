@@ -43,23 +43,22 @@ var (
 )
 
 func main() {
-    // Set up RabbitMQ exchange
     err := rabbitChan.ExchangeDeclare(
-        "chat_exchange", // name
-        "fanout",       // type
-        true,           // durable
-        false,          // auto-deleted
-        false,          // internal
-        false,          // no-wait
-        nil,           // arguments
+        "chat_exchange", 
+        "fanout",     
+        true,           
+        false,          
+        false,         
+        false,          
+        nil,           
     )
     if err != nil {
         log.Fatal(err)
     }
 
-    // HTTP endpoints
     http.HandleFunc("/ws", handleWebSocket)
     http.HandleFunc("/history", getChatHistory)
+    http.Handle("/", http.FileServer(http.Dir("static")))
 
     log.Println("Server starting on :8080")
     log.Fatal(http.ListenAndServe(":8080", nil))
@@ -81,14 +80,13 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
         room:     room,
     }
 
-    // Subscribe to RabbitMQ queue
     q, err := rabbitChan.QueueDeclare(
-        "",    // name (empty for auto-generation)
-        false, // durable
-        true,  // delete when unused
-        true,  // exclusive
-        false, // no-wait
-        nil,   // arguments
+        "",   
+        false, 
+        true,  
+        true,  
+        false, 
+        nil,   
     )
     if err != nil {
         log.Println(err)
@@ -96,9 +94,9 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
     }
 
     err = rabbitChan.QueueBind(
-        q.Name,         // queue name
-        "",            // routing key
-        "chat_exchange", // exchange
+        q.Name,         
+        "",            
+        "chat_exchange", 
         false,
         nil,
     )
