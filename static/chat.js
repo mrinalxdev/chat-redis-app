@@ -4,7 +4,6 @@ class ChatApp {
     this.currentUser = null;
     this.currentRoom = null;
 
-    // Cache DOM elements
     this.elements = {
       loginModal: document.getElementById("loginModal"),
       chatInterface: document.getElementById("chatInterface"),
@@ -16,7 +15,6 @@ class ChatApp {
       userDisplay: document.getElementById("userDisplay"),
     };
 
-    // Bind event listeners
     this.bindEvents();
   }
 
@@ -26,22 +24,18 @@ class ChatApp {
       .getElementById("joinButton")
       .addEventListener("click", () => this.joinChat());
 
-    // Leave chat
     document
       .getElementById("leaveButton")
       .addEventListener("click", () => this.leaveChat());
 
-    // Send message
     document
       .getElementById("sendButton")
       .addEventListener("click", () => this.sendMessage());
 
-    // Enter key support
     this.elements.messageInput.addEventListener("keypress", (e) => {
       if (e.key === "Enter") this.sendMessage();
     });
 
-    // Focus username input on page load
     this.elements.username.focus();
   }
 
@@ -177,11 +171,10 @@ class ChatApp {
   }
 
   showError(message) {
-    alert(message); // Could be replaced with a more sophisticated error display
+    alert(message); 
   }
 }
 
-// Initialize the chat application
 document.addEventListener("DOMContentLoaded", () => {
   window.chatApp = new ChatApp();
 });
